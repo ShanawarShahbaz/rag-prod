@@ -1,0 +1,40 @@
+{"question": "Who are the authors of the paper titled \"Learning phrase representations using rnn encoder-decoder for statistical machine translation\"?", "expected_id": "pdf/attention_is_all_you_need.pdf::20", "expected_source": "pdf/attention_is_all_you_need.pdf"}
+{"question": "What percentage of tokens in each batch do masked language models make predictions on?", "expected_id": "pdf/bert.pdf::38", "expected_source": "pdf/bert.pdf"}
+{"question": "What method is explored in the work to enhance reasoning in language models?", "expected_id": "pdf/chain_of_thought.pdf::26", "expected_source": "pdf/chain_of_thought.pdf"}
+{"question": "What did Joaquin Phoenix wear to the Golden Globes a year ago?", "expected_id": "pdf/gpt3_few_shot_learners.pdf::61", "expected_source": "pdf/gpt3_few_shot_learners.pdf"}
+{"question": "What task is used to evaluate RAG's natural language generation in a knowledge-intensive setting?", "expected_id": "pdf/rag_paper.pdf::10", "expected_source": "pdf/rag_paper.pdf"}
+{"question": "What did Alice's sister do after Alice ran off to her tea?", "expected_id": "text/alice_in_wonderland.txt::88", "expected_source": "text/alice_in_wonderland.txt"}
+{"question": "What feelings filled the speaker after the De Lacey family departed?", "expected_id": "text/frankenstein.txt::153", "expected_source": "text/frankenstein.txt"}
+{"question": "What type of tool is the character compared to in the passage?", "expected_id": "text/moby_dick.txt::677", "expected_source": "text/moby_dick.txt"}
+{"question": "What did Mrs. Bennet want her daughters to do quickly when Mr. Bingley arrived?", "expected_id": "text/pride_and_prejudice.txt::388", "expected_source": "text/pride_and_prejudice.txt"}
+{"question": "What did Jem find when he opened the goose he chose?", "expected_id": "text/sherlock_holmes.txt::197", "expected_source": "text/sherlock_holmes.txt"}
+{"question": "What should you do if you don't want to write contribution guidelines from scratch?", "expected_id": "markdown/awesome-main/awesome.md::2", "expected_source": "markdown/awesome-main/awesome.md"}
+{"question": "What email address should be used to report instances of abusive or harassing behavior?", "expected_id": "markdown/awesome-main/code-of-conduct.md::1", "expected_source": "markdown/awesome-main/code-of-conduct.md"}
+{"question": "What is the first step to take when you want to add something to an awesome list on GitHub?", "expected_id": "markdown/awesome-main/contributing.md::0", "expected_source": "markdown/awesome-main/contributing.md"}
+{"question": "How long should you wait after creating a list before submitting it?", "expected_id": "markdown/awesome-main/create-list.md::0", "expected_source": "markdown/awesome-main/create-list.md"}
+{"question": "What should be included in a project logo/illustration for a GitHub repo to comply with the guidelines?", "expected_id": "markdown/awesome-main/pull_request_template.md::5", "expected_source": "markdown/awesome-main/pull_request_template.md"}
+{"question": "What section follows the \"Platforms\" section in the contents?", "expected_id": "markdown/awesome-main/readme.md::2", "expected_source": "markdown/awesome-main/readme.md"}
+{"question": "What mechanism does the Transformer use to compute representations of its input and output?", "expected_id": "pdf/attention_is_all_you_need.pdf::3", "expected_source": "pdf/attention_is_all_you_need.pdf"}
+{"question": "What is the learning rate used during the fine-tuning process?", "expected_id": "pdf/bert.pdf::17", "expected_source": "pdf/bert.pdf"}
+{"question": "What is the answer choice for the question about what a person is building when beginning work?", "expected_id": "pdf/chain_of_thought.pdf::85", "expected_source": "pdf/chain_of_thought.pdf"}
+{"question": "What is the highest F1 score achieved in the SQuADv2 f1 dev data?", "expected_id": "pdf/gpt3_few_shot_learners.pdf::145", "expected_source": "pdf/gpt3_few_shot_learners.pdf"}
+{"question": "Who are the authors of the paper titled \"BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding\"?", "expected_id": "pdf/rag_paper.pdf::28", "expected_source": "pdf/rag_paper.pdf"}
+{"question": "What did the Mouse think about having a trial without a jury or judge?", "expected_id": "text/alice_in_wonderland.txt::19", "expected_source": "text/alice_in_wonderland.txt"}
+{"question": "What percentage of gross profits must be paid as a royalty fee when charging for copies of Project Gutenberg electronic works?", "expected_id": "text/frankenstein.txt::259", "expected_source": "text/frankenstein.txt"}
+{"question": "What condition do Steelkilt and his comrades insist upon before they agree to work?", "expected_id": "text/moby_dick.txt::379", "expected_source": "text/moby_dick.txt"}
+{"question": "What does Mrs. Bennet believe will happen to Jane as a result of her feelings for the young man?", "expected_id": "text/pride_and_prejudice.txt::262", "expected_source": "text/pride_and_prejudice.txt"}
+{"question": "Whose hat is being discussed in the conversation?", "expected_id": "text/sherlock_holmes.txt::173", "expected_source": "text/sherlock_holmes.txt"}
+{"question": "What should you do if you are unsure whether something is actually awesome before including it in your list?", "expected_id": "markdown/awesome-main/awesome.md::0", "expected_source": "markdown/awesome-main/awesome.md"}
+{"question": "What are some examples of unacceptable behavior by participants according to the Code of Conduct?", "expected_id": "markdown/awesome-main/code-of-conduct.md::0", "expected_source": "markdown/awesome-main/code-of-conduct.md"}
+{"question": "What might prompt a maintainer to request changes to your Pull Request?", "expected_id": "markdown/awesome-main/contributing.md::1", "expected_source": "markdown/awesome-main/contributing.md"}
+{"question": "What should the first section of the document be named?", "expected_id": "markdown/awesome-main/pull_request_template.md::6", "expected_source": "markdown/awesome-main/pull_request_template.md"}
+{"question": "What is the purpose of honeypots in cybersecurity?", "expected_id": "markdown/awesome-main/readme.md::41", "expected_source": "markdown/awesome-main/readme.md"}
+{"question": "What is the BLEU score achieved by the Transformer model on the WMT 2014 English-to-German translation task?", "expected_id": "pdf/attention_is_all_you_need.pdf::0", "expected_source": "pdf/attention_is_all_you_need.pdf"}
+{"question": "What does BERT stand for?", "expected_id": "pdf/bert.pdf::0", "expected_source": "pdf/bert.pdf"}
+{"question": "Who are the authors of the paper titled \"WT5?! Training text-to-text models to explain their predictions\"?", "expected_id": "pdf/chain_of_thought.pdf::34", "expected_source": "pdf/chain_of_thought.pdf"}
+{"question": "What type of GPU was used to train the models?", "expected_id": "pdf/gpt3_few_shot_learners.pdf::20", "expected_source": "pdf/gpt3_few_shot_learners.pdf"}
+{"question": "What year was the paper \"A diversity-promoting objective function for neural conversation models\" published?", "expected_id": "pdf/rag_paper.pdf::34", "expected_source": "pdf/rag_paper.pdf"}
+{"question": "What is the first step in forming the Lobster Quadrille according to the Gryphon?", "expected_id": "text/alice_in_wonderland.txt::69", "expected_source": "text/alice_in_wonderland.txt"}
+{"question": "What did the creature find on the child's breast after he killed him?", "expected_id": "text/frankenstein.txt::158", "expected_source": "text/frankenstein.txt"}
+{"question": "What type of ropes were used for the ladder in the chapel?", "expected_id": "text/moby_dick.txt::70", "expected_source": "text/moby_dick.txt"}
+{"question": "What does Darcy imply about the general estimation of ladies' accomplishments?", "expected_id": "text/pride_and_prejudice.txt::58", "expected_source": "text/pride_and_prejudice.txt"}
