@@ -54,6 +54,7 @@ OPENAI_API_KEY=sk-...
 | `api.py` | FastAPI wrapper exposing the pipeline as a `POST /query` endpoint (question → generated answer + sources), plus `GET /health` and `GET /metrics` |
 | `telemetry.py` | OpenTelemetry setup: trace export to Jaeger (OTLP), custom Prometheus metrics (stage latency, retrieval confidence, token usage, request counts) |
 | `docker-compose.monitoring.yml` + `prometheus.yml` | Local Jaeger + Prometheus stack for viewing traces/metrics |
+| `locustfile.py` | Load test for `POST /query` — mixed realistic questions, configurable concurrency |
 
 ### Generated data files (not source, regenerate as needed)
 
@@ -201,6 +202,43 @@ Prometheus scrapes the API via `host.docker.internal:8000` (see
 be running locally on port 8000.
 
 Stop the stack: `docker compose -f docker-compose.monitoring.yml down`
+
+## Load testing
+
+`locustfile.py` load-tests the `/query` endpoint with realistic mixed questions.
+
+```bash
+pip install locust
+
+# headless, e.g. 3 users, spawn 1/sec, 45s
+locust -f locustfile.py --host http://127.0.0.1:8000 --headless -u 3 -r 1 -t 45s
+
+# or interactive web UI at http://localhost:8089
+locust -f locustfile.py --host http://127.0.0.1:8000
+```
+
+Keep concurrency low — each request costs real OpenAI API usage, and the
+API isn't currently built to handle high concurrency (see below).
+
+### Result: 3 concurrent users, 45s, 25 requests, 0 failures
+
+| Percentile | Latency |
+|---|---|
+| p50 | 2.7s |
+| p90 | 6.8s |
+| p95 | 7.7s |
+| p99 | 8.7s |
+
+Compare to single-request latency (~2.8s, see Performance above) — **tail
+latency roughly triples under just 3 concurrent users.** Root cause: `/query`
+in `api.py` is a synchronous (`def`, not `async def`) route, and the
+cross-encoder rerank step is CPU-bound. FastAPI runs sync routes in a bounded
+thread pool, so concurrent requests queue behind each other rather than
+running in parallel — this app has not been load-tested or optimized for
+concurrent traffic. Fixing this would mean moving the OpenAI calls to
+`async`/`await` (they're I/O-bound, so this parallelizes for free) and
+either running the reranker in a process pool or batching multiple queries'
+candidates through the cross-encoder together.
 
 ## Design notes / things to know
 
