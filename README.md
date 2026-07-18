@@ -217,28 +217,45 @@ locust -f locustfile.py --host http://127.0.0.1:8000 --headless -u 3 -r 1 -t 45s
 locust -f locustfile.py --host http://127.0.0.1:8000
 ```
 
-Keep concurrency low — each request costs real OpenAI API usage, and the
-API isn't currently built to handle high concurrency (see below).
+Keep concurrency low — each request costs real OpenAI API usage.
 
-### Result: 3 concurrent users, 45s, 25 requests, 0 failures
+### Before vs. after the concurrency fix
 
-| Percentile | Latency |
-|---|---|
-| p50 | 2.7s |
-| p90 | 6.8s |
-| p95 | 7.7s |
-| p99 | 8.7s |
+| Metric | 3 users (before) | 6 users (after fix) |
+|---|---|---|
+| Requests completed (45s) | 25 | **61** |
+| Throughput | 0.58 req/s | **1.36 req/s** |
+| p50 | 2.7s | **2.1s** |
+| p90 | 6.8s | **3.6s** |
+| p95 | 7.7s | **3.8s** |
+| p99 | 8.7s | **4.4s** |
+| Failures | 0 | 0 |
 
-Compare to single-request latency (~2.8s, see Performance above) — **tail
-latency roughly triples under just 3 concurrent users.** Root cause: `/query`
-in `api.py` is a synchronous (`def`, not `async def`) route, and the
-cross-encoder rerank step is CPU-bound. FastAPI runs sync routes in a bounded
-thread pool, so concurrent requests queue behind each other rather than
-running in parallel — this app has not been load-tested or optimized for
-concurrent traffic. Fixing this would mean moving the OpenAI calls to
-`async`/`await` (they're I/O-bound, so this parallelizes for free) and
-either running the reranker in a process pool or batching multiple queries'
-candidates through the cross-encoder together.
+Despite **doubling** concurrent users, tail latency dropped and throughput
+more than doubled. Three fixes got us here:
+
+1. **`query_index.py` was reloading the FAISS index and the entire
+   `chunks_with_meta.jsonl` metadata file from disk on every single
+   request.** Now loaded once at import time. This alone was a meaningful
+   chunk of the per-request cost.
+2. **OpenAI calls were synchronous**, blocking a full thread for the
+   duration of each network call. Switched to `AsyncOpenAI` (`generate_async`,
+   `embed_query_async` in `query_index.py`) so `/query` is a true
+   `async def` route — the event loop stays free to serve other requests
+   while waiting on network I/O.
+3. **The cross-encoder rerank step is CPU-bound** and would otherwise block
+   the event loop; it now runs via `loop.run_in_executor()` so it doesn't
+   stall other in-flight requests' I/O.
+
+The sync versions of `search()`, `search_with_rerank()`, and `generate()`
+are kept for CLI tools and eval scripts — only the API path needed to
+become async.
+
+Remaining known limit: the cross-encoder still runs on CPU and is subject
+to Python's GIL for the actual inference math, so very high concurrency
+would eventually bottleneck there — the next lever would be batching
+multiple requests' rerank candidates into a single `predict()` call, or
+moving inference to a dedicated model-serving process.
 
 ## Design notes / things to know
 

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from fastapi import FastAPI, HTTPException, Response
 
-from generate_answer import generate
+from generate_answer import generate_async
 from telemetry import instrument_fastapi, request_counter
 
 app = FastAPI(title="RAG Practice API")
@@ -27,9 +27,9 @@ class QueryResponse(BaseModel):
 
 
 @app.post("/query", response_model=QueryResponse)
-def query(request: QueryRequest):
+async def query(request: QueryRequest):
     try:
-        answer = generate(request.question, request.top_k, request.candidate_k)
+        answer = await generate_async(request.question, request.top_k, request.candidate_k)
     except Exception as e:
         request_counter.add(1, {"status": "error"})
         raise HTTPException(status_code=500, detail=str(e))
