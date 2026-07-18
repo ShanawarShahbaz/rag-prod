@@ -35,8 +35,9 @@ def build_context(chunks: list[dict]) -> str:
     return "\n\n".join(parts)
 
 
-def generate(query: str, top_k: int = 5, candidate_k: int = 20) -> str:
-    chunks = search_with_rerank(query, top_k, candidate_k)
+def generate(query: str, top_k: int = 3, candidate_k: int = 20, chunks: list[dict] = None) -> str:
+    if chunks is None:
+        chunks = search_with_rerank(query, top_k, candidate_k)
     context = build_context(chunks)
 
     user_prompt = f"Context:\n{context}\n\nQuestion: {query}"
@@ -64,7 +65,7 @@ def main():
         sys.exit(1)
 
     query = sys.argv[1]
-    top_k = int(sys.argv[2]) if len(sys.argv) > 2 else 5
+    top_k = int(sys.argv[2]) if len(sys.argv) > 2 else 3
 
     print(generate(query, top_k))
 

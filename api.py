@@ -15,7 +15,7 @@ app = FastAPI(title="RAG Practice API")
 
 class QueryRequest(BaseModel):
     question: str = Field(..., min_length=1)
-    top_k: int = Field(5, ge=1, le=20)
+    top_k: int = Field(3, ge=1, le=20)
     candidate_k: int = Field(20, ge=1, le=100)
 
 

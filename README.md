@@ -47,9 +47,10 @@ OPENAI_API_KEY=sk-...
 | `build_faiss_index.py` | Builds a `faiss.index` (`IndexFlatIP` on L2-normalized vectors = cosine similarity) from `embeddings.npy` |
 | `query_index.py` | Embeds a query and does a plain FAISS vector search. `search(query, top_k, candidate_k)` — used directly, or as stage 1 of reranking |
 | `rerank.py` | Two-stage retrieval: FAISS pulls `candidate_k` candidates (default 20), then a local cross-encoder (`cross-encoder/ms-marco-MiniLM-L-6-v2`) rescores and returns the top `top_k` |
-| `generate_answer.py` | Full RAG: reranked retrieval → `gpt-4o-mini` generates an answer grounded in the retrieved chunks, with inline `[1]`, `[2]` citations mapped to sources |
+| `generate_answer.py` | Full RAG: reranked retrieval (`top_k=3` default) → `gpt-4o-mini` generates an answer grounded in the retrieved chunks, with inline `[1]`, `[2]` citations mapped to sources |
 | `build_eval_set.py` | Generates a synthetic retrieval eval set: samples chunks across all sources, asks `gpt-4o-mini` to write one question per chunk, records the chunk id as ground truth. Writes `eval_set.jsonl` |
 | `eval_retrieval.py` | Runs every eval question through retrieval and scores Hit@1, Recall@k, and MRR. Supports `--rerank` to compare vector-only vs. reranked retrieval. Logs per-question ranks to `eval_results.jsonl` |
+| `eval_generation.py` | LLM-as-judge eval of full RAG output: scores each answer on Faithfulness, Answer Relevancy, and Context Precision using `gpt-4o-mini` as judge. Logs per-question scores + reasoning to `generation_eval_results.jsonl` |
 | `api.py` | FastAPI wrapper exposing the pipeline as a `POST /query` endpoint (question → generated answer + sources), plus `GET /health` |
 
 ### Generated data files (not source, regenerate as needed)
@@ -59,7 +60,8 @@ OPENAI_API_KEY=sk-...
 - `embeddings.npy` — (N, 1536) float32 embedding matrix
 - `faiss.index` — FAISS vector index built from `embeddings.npy`
 - `eval_set.jsonl` — synthetic eval questions + expected chunk ids
-- `eval_results.jsonl` — last eval run's per-question retrieval ranks
+- `eval_results.jsonl` — last retrieval eval run's per-question ranks
+- `generation_eval_results.jsonl` — last generation eval run's per-question faithfulness/relevancy/precision scores
 
 ## Usage
 
@@ -81,7 +83,7 @@ python3 query_index.py "How does self-attention work in transformers?" 5
 # reranked search
 python3 rerank.py "How does self-attention work in transformers?" 5 20
 
-# full RAG answer with citations
+# full RAG answer with citations (top_k=3 default)
 python3 generate_answer.py "How does self-attention work in transformers?"
 ```
 
@@ -93,7 +95,16 @@ python3 eval_retrieval.py 5                 # vector-only baseline
 python3 eval_retrieval.py 5 --rerank 20     # with cross-encoder reranking
 ```
 
-## Eval results (40 synthetic questions, top_k=5)
+Evaluate generation quality (LLM-as-judge):
+
+```bash
+python3 eval_generation.py                  # all 40 questions, top_k=3 default
+python3 eval_generation.py 40 5             # override top_k, e.g. to compare against 5
+```
+
+## Eval results
+
+### Retrieval (40 synthetic questions, top_k=5)
 
 | Metric | Vector-only | + Cross-encoder rerank |
 |---|---|---|
@@ -106,6 +117,23 @@ query+chunk jointly, which is much better at picking the single best chunk
 than embedding similarity alone. Most remaining misses are chunk-boundary
 near-misses (the answer sentence sits just outside the retrieved chunk),
 suggesting overlap tuning as the next lever, followed by chunk size tuning.
+
+### Generation quality (LLM-as-judge, 40 questions, reranked retrieval)
+
+| Metric | top_k=5 | top_k=3 (current default) |
+|---|---|---|
+| Faithfulness | 90.4% | **95.4%** |
+| Answer Relevancy | 93.0% | 91.5% |
+| Context Precision | 47.0% | **55.8%** |
+
+`top_k=3` is the default because it improves faithfulness and context
+precision with negligible relevancy cost — fewer, more-focused chunks means
+less irrelevant material for the model to potentially misuse. The one
+regression seen when dropping from 5→3 was a case where the correct chunk
+fell outside the smaller context window; the model correctly said "the
+context doesn't contain this" rather than hallucinating, which is the right
+failure mode. If you need to prioritize recall over precision (e.g. broader,
+open-ended questions), pass a larger `top_k` explicitly.
 
 ## API
 
@@ -121,7 +149,7 @@ Interactive docs: `http://127.0.0.1:8000/docs`
 ```bash
 curl -X POST http://127.0.0.1:8000/query \
   -H "Content-Type: application/json" \
-  -d '{"question": "How does self-attention work in transformers?", "top_k": 5, "candidate_k": 20}'
+  -d '{"question": "How does self-attention work in transformers?", "top_k": 3, "candidate_k": 20}'
 ```
 
 Response:
@@ -151,3 +179,8 @@ Response:
   from a bibliography chunk whose real answer lives in a different paper),
   not genuine retrieval failures. Spot-check `eval_results.jsonl` misses
   before trusting the numbers at face value.
+- **Generation eval (`eval_generation.py`) is also LLM-as-judge**, so it
+  inherits judge noise/pedantry — e.g. it may mark a correct claim as
+  "unsupported" over a literal wording mismatch with the context. Spot-check
+  low scores in `generation_eval_results.jsonl` before treating them as real
+  faithfulness failures.
