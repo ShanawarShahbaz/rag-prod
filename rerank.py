@@ -6,10 +6,12 @@ by how well each chunk actually answers the query, cutting down to top_k.
 Usage: python3 rerank.py "your question here" [top_k] [candidate_k]
 """
 import sys
+import time
 
 from sentence_transformers import CrossEncoder
 
 from query_index import search
+from telemetry import rerank_latency, retrieval_latency, retrieval_top_score, tracer
 
 RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
@@ -24,18 +26,34 @@ def get_model() -> CrossEncoder:
 
 
 def search_with_rerank(query: str, top_k: int = 5, candidate_k: int = 20):
-    candidates = search(query, top_k=top_k, candidate_k=candidate_k)
+    with tracer.start_as_current_span("retrieval") as span:
+        span.set_attribute("candidate_k", candidate_k)
+        t0 = time.perf_counter()
+        candidates = search(query, top_k=top_k, candidate_k=candidate_k)
+        retrieval_latency.record(time.perf_counter() - t0)
+        span.set_attribute("candidates_found", len(candidates))
+
     if not candidates:
         return []
 
-    pairs = [(query, c["text"]) for c in candidates]
-    rerank_scores = get_model().predict(pairs)
+    with tracer.start_as_current_span("rerank") as span:
+        span.set_attribute("top_k", top_k)
+        pairs = [(query, c["text"]) for c in candidates]
+        t0 = time.perf_counter()
+        rerank_scores = get_model().predict(pairs)
+        rerank_latency.record(time.perf_counter() - t0)
 
-    for c, score in zip(candidates, rerank_scores):
-        c["rerank_score"] = float(score)
+        for c, score in zip(candidates, rerank_scores):
+            c["rerank_score"] = float(score)
 
-    candidates.sort(key=lambda c: c["rerank_score"], reverse=True)
-    return candidates[:top_k]
+        candidates.sort(key=lambda c: c["rerank_score"], reverse=True)
+        results = candidates[:top_k]
+        if results:
+            top_score = results[0]["rerank_score"]
+            retrieval_top_score.record(top_score)
+            span.set_attribute("top_score", top_score)
+
+    return results
 
 
 def main():

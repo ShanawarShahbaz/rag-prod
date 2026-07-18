@@ -51,7 +51,9 @@ OPENAI_API_KEY=sk-...
 | `build_eval_set.py` | Generates a synthetic retrieval eval set: samples chunks across all sources, asks `gpt-4o-mini` to write one question per chunk, records the chunk id as ground truth. Writes `eval_set.jsonl` |
 | `eval_retrieval.py` | Runs every eval question through retrieval and scores Hit@1, Recall@k, and MRR. Supports `--rerank` to compare vector-only vs. reranked retrieval. Logs per-question ranks to `eval_results.jsonl` |
 | `eval_generation.py` | LLM-as-judge eval of full RAG output: scores each answer on Faithfulness, Answer Relevancy, and Context Precision using `gpt-4o-mini` as judge. Logs per-question scores + reasoning to `generation_eval_results.jsonl` |
-| `api.py` | FastAPI wrapper exposing the pipeline as a `POST /query` endpoint (question → generated answer + sources), plus `GET /health` |
+| `api.py` | FastAPI wrapper exposing the pipeline as a `POST /query` endpoint (question → generated answer + sources), plus `GET /health` and `GET /metrics` |
+| `telemetry.py` | OpenTelemetry setup: trace export to Jaeger (OTLP), custom Prometheus metrics (stage latency, retrieval confidence, token usage, request counts) |
+| `docker-compose.monitoring.yml` + `prometheus.yml` | Local Jaeger + Prometheus stack for viewing traces/metrics |
 
 ### Generated data files (not source, regenerate as needed)
 
@@ -159,6 +161,46 @@ Response:
 ```
 
 `GET /health` returns `{"status": "ok"}` for liveness checks.
+
+## Monitoring
+
+The pipeline is instrumented with **OpenTelemetry**: traces show the
+per-request waterfall (retrieval → rerank → generation), and custom metrics
+(latency per stage, retrieval confidence, token usage, request counts) are
+exposed in Prometheus format on the API.
+
+- `telemetry.py` — sets up the OTel `TracerProvider` (exports spans via OTLP
+  to Jaeger) and `MeterProvider` (exposes metrics via `PrometheusMetricReader`),
+  plus `instrument_fastapi()` for automatic HTTP-level spans
+- `rerank.py` — wraps vector search and cross-encoder rerank in spans, records
+  `rag_retrieval_latency_seconds`, `rag_rerank_latency_seconds`, and
+  `rag_retrieval_top_score` (a retrieval-confidence proxy)
+- `generate_answer.py` — wraps the OpenAI call in a `generation` span, records
+  `rag_generation_latency_seconds` and `rag_tokens_total` (prompt/completion)
+- `api.py` — auto-instruments all HTTP routes, tracks `rag_requests_total`
+  by status, exposes `GET /metrics` for Prometheus to scrape
+
+### Run the local stack
+
+```bash
+pip install opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-http \
+  opentelemetry-instrumentation-fastapi opentelemetry-exporter-prometheus prometheus-client
+
+docker compose -f docker-compose.monitoring.yml up -d   # Jaeger + Prometheus
+uvicorn api:app --reload
+```
+
+- Jaeger UI (traces): http://localhost:16686 — select service `rag-pipeline`
+- Prometheus UI (metrics): http://localhost:9090 — e.g. query
+  `histogram_quantile(0.95, rag_generation_latency_seconds_bucket)` for p95
+  generation latency, or `rate(rag_tokens_total[5m])` for token usage rate
+- Raw metrics: `curl http://127.0.0.1:8000/metrics`
+
+Prometheus scrapes the API via `host.docker.internal:8000` (see
+`prometheus.yml`) — no Dockerfile needed for the API itself, it just needs to
+be running locally on port 8000.
+
+Stop the stack: `docker compose -f docker-compose.monitoring.yml down`
 
 ## Design notes / things to know
 
