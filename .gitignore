@@ -11,3 +11,4 @@ job_application_system/gmail_*.json
 job_application_system/emails/
 cv-and-applications/applications_tracking.csv
 cv-and-applications/applications_data/
+job_application_system/last_report.txt
