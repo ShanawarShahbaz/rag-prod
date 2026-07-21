@@ -23,3 +23,8 @@ anthropic==0.21.0
 
 # Logging and monitoring
 python-json-logger==2.0.7
+
+# Production Cloud Deployment
+Flask==3.0.0
+gunicorn==21.2.0
+Werkzeug==3.0.0
