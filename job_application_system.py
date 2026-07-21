@@ -10,13 +10,17 @@ from typing import List, Dict
 import requests
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Configuration
 CONFIG = {
     "email": "shanawar.shahbaz6@gmail.com",
     "schedule_time": "07:00",  # 7 AM
     "daily_applications": 15,  # 10-20 per day
-    "locations": ["Saudi Arabia", "Dubai", "UAE", "KSA"],
+    "locations": ["Saudi Arabia", "Dubai", "KSA"],
     "roles": [
         "AI Engineer",
         "LLM Engineer",
@@ -25,69 +29,119 @@ CONFIG = {
         "ML DevOps Engineer"
     ],
     "cv_folder": Path("cv-and-applications/cv"),
-    "tracking_file": Path("cv-and-applications/applications_tracking.csv")
+    "tracking_file": Path("cv-and-applications/applications_tracking.csv"),
+    "jsearch_api_key": os.getenv("JSEARCH_API_KEY", ""),
+    "jsearch_api_host": "jsearch.p.rapidapi.com"
 }
 
 class JobSearcher:
-    """Search for jobs using free job APIs"""
+    """Search for jobs using JSearch API (covers LinkedIn, Indeed, Glassdoor)"""
 
     def __init__(self):
         self.jobs = []
+        self.api_key = CONFIG["jsearch_api_key"]
+        self.api_host = CONFIG["jsearch_api_host"]
 
-    def search_indeed(self, query: str, locations: List[str]) -> List[Dict]:
+    def search_jsearch(self, role: str, locations: List[str]) -> List[Dict]:
         """
-        Search Indeed for jobs
-        Using RapidAPI's Indeed API (free tier available)
+        Search JSearch API for jobs
+        Covers: LinkedIn, Indeed, Glassdoor, ZipRecruiter
         """
         jobs = []
+
+        if not self.api_key:
+            print(f"⚠️  JSearch API key not found in .env file")
+            print(f"    To enable: Set JSEARCH_API_KEY in .env")
+            return jobs
+
         for location in locations:
             try:
-                # Mock implementation - replace with actual API call
-                # This is where you'd use Indeed API or JSearch
-                print(f"Searching Indeed for '{query}' in {location}")
-                # In production: make actual API call here
+                # Search query with location
+                search_query = f"{role} {location}"
+
+                url = "https://jsearch.p.rapidapi.com/search"
+                querystring = {
+                    "query": search_query,
+                    "page": "1",
+                    "num_pages": "1"
+                }
+
+                headers = {
+                    "x-rapidapi-key": self.api_key,
+                    "x-rapidapi-host": self.api_host
+                }
+
+                print(f"  🔍 Searching JSearch: '{role}' in {location}...")
+
+                response = requests.get(url, headers=headers, params=querystring, timeout=10)
+
+                if response.status_code == 200:
+                    data = response.json()
+                    job_list = data.get("data", [])
+
+                    for job in job_list:
+                        job_dict = {
+                            "title": job.get("job_title", ""),
+                            "company": job.get("employer_name", ""),
+                            "location": job.get("job_location", location),
+                            "description": job.get("job_description", ""),
+                            "url": job.get("job_apply_link", ""),
+                            "role_type": self._detect_role_type(job.get("job_title", "")),
+                            "posted_date": job.get("job_posted_at_datetime_utc", ""),
+                        }
+
+                        if job_dict["title"] and job_dict["company"]:
+                            jobs.append(job_dict)
+
+                    print(f"    ✅ Found {len(job_list)} jobs")
+
+                elif response.status_code == 429:
+                    print(f"  ⚠️  Rate limit reached (100 requests/month used)")
+                    break
+
+                elif response.status_code == 401:
+                    print(f"  ❌ Invalid API key. Check JSEARCH_API_KEY in .env")
+                    break
+
+            except requests.exceptions.Timeout:
+                print(f"  ⏱️  Timeout searching {location}")
             except Exception as e:
-                print(f"Error searching Indeed: {e}")
+                print(f"  ❌ Error searching {location}: {str(e)}")
+
         return jobs
 
-    def search_jsearch(self, query: str, locations: List[str]) -> List[Dict]:
-        """
-        Search JSearch API (covers LinkedIn, Indeed, Glassdoor)
-        Free tier: 100 requests/month
-        """
-        jobs = []
-        # This would use actual JSearch API in production
-        print(f"Searching JSearch for roles: {', '.join(query)}")
-        return jobs
+    def _detect_role_type(self, job_title: str) -> str:
+        """Detect which CV to use based on job title"""
+        job_title_lower = job_title.lower()
 
-    def search_angel_list(self, query: str) -> List[Dict]:
-        """Search AngelList for startup jobs"""
-        # Implementation with actual API
-        print(f"Searching AngelList for {query}")
-        return []
+        if "llm" in job_title_lower or "prompt" in job_title_lower:
+            return "llm_engineer"
+        elif "deploy" in job_title_lower or "devops" in job_title_lower:
+            return "forward_deploy"
+        elif "ai" in job_title_lower or "ml" in job_title_lower:
+            return "ai_engineer"
+        else:
+            return "ai_engineer"  # Default
 
     def search_all(self) -> List[Dict]:
         """Search all job sources"""
         all_jobs = []
 
+        print("\n🔍 Starting job search across all roles and locations...\n")
+
         # Search for each role
         for role in CONFIG["roles"]:
-            print(f"\n🔍 Searching for '{role}' positions...")
+            print(f"📌 Searching for '{role}' positions...")
 
-            # Search Indeed
-            indeed_jobs = self.search_indeed(role, CONFIG["locations"])
-            all_jobs.extend(indeed_jobs)
-
-            # Search JSearch
+            # Search JSearch (covers Indeed, LinkedIn, Glassdoor, etc.)
             jsearch_jobs = self.search_jsearch(role, CONFIG["locations"])
             all_jobs.extend(jsearch_jobs)
 
-            # Search AngelList
-            angel_jobs = self.search_angel_list(role)
-            all_jobs.extend(angel_jobs)
+            print()
 
         # Remove duplicates and filter
         unique_jobs = self._deduplicate_jobs(all_jobs)
+        print(f"\n✅ Total unique jobs found: {len(unique_jobs)}\n")
         return unique_jobs
 
     def _deduplicate_jobs(self, jobs: List[Dict]) -> List[Dict]:
